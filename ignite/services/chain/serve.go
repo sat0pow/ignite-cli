@@ -466,15 +466,15 @@ func (c *Chain) serve(
 }
 
 func (c *Chain) start(ctx context.Context, cfg *chainconfig.Config) error {
-	commands, err := c.Commands(ctx)
-	if err != nil {
-		return err
-	}
+	// commands, err := c.Commands(ctx)
+	// if err != nil {
+	// 	return err
+	// }
 
 	g, ctx := errgroup.WithContext(ctx)
 
 	// start the blockchain.
-	g.Go(func() error { return c.Start(ctx, commands, cfg) })
+	// g.Go(func() error { return c.Start(ctx, commands, cfg) })
 
 	// start the faucet if enabled.
 	faucet, err := c.Faucet(ctx)

@@ -20,7 +20,7 @@ import (
 	"github.com/ignite/cli/v28/ignite/pkg/events"
 	"github.com/ignite/cli/v28/ignite/pkg/repoversion"
 	"github.com/ignite/cli/v28/ignite/pkg/xexec"
-	"github.com/ignite/cli/v28/ignite/pkg/xurl"
+	// "github.com/ignite/cli/v28/ignite/pkg/xurl"
 	igniteversion "github.com/ignite/cli/v28/ignite/version"
 )
 
@@ -498,7 +498,8 @@ func (c *Chain) Commands(ctx context.Context) (chaincmdrunner.Runner, error) {
 		}
 	}
 
-	nodeAddr, err := xurl.TCP(servers.RPC.Address)
+	// nodeAddr, err := xurl.TCP(servers.RPC.Address)
+	nodeAddr := servers.RPC.Address
 	if err != nil {
 		return chaincmdrunner.Runner{}, err
 	}

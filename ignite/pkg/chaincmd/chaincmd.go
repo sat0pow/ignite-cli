@@ -506,6 +506,8 @@ func (c ChainCmd) BankSendCommand(fromAddress, toAddress, amount string, options
 		amount,
 		optionBroadcastMode, flags.BroadcastSync,
 		optionYes,
+		optionValidatorGasPrices, "0.025utuc",
+
 	)
 
 	// Apply the options provided by the user
