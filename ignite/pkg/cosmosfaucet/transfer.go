@@ -2,6 +2,9 @@ package cosmosfaucet
 
 import (
 	"context"
+	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -65,6 +68,26 @@ func (f Faucet) TotalTransferredAmount(ctx context.Context, toAccountAddress, de
 	return totalAmount, nil
 }
 
+func (f Faucet) TotalTransferredAmountLocalDB(ctx context.Context, toAccountAddress, denom string) (totalAmount sdkmath.Int, err error) {
+	db, err := leveldb.OpenFile("/tmp/faucet.db", nil)
+	defer db.Close()
+	totalAmount = sdkmath.NewInt(0)
+	iter := db.NewIterator(util.BytesPrefix([]byte(toAccountAddress+":"+denom)), nil)
+	for iter.Next() {
+		value := iter.Value()
+		amount, _ := strconv.Atoi(string(value))
+		totalAmount = totalAmount.Add(sdkmath.NewInt(int64(amount)))
+	}
+	return totalAmount, err
+}
+
+func (f Faucet) AddAmountToLocalDB(ctx context.Context, toAccountAddress, denom string, amount sdkmath.Int) (err error) {
+	db, err := leveldb.OpenFile("/tmp/faucet.db", nil)
+	defer db.Close()
+	db.Put([]byte(toAccountAddress+":"+denom+":"+time.Now().String()), []byte(amount.String()), nil)
+	return err
+}
+
 // Transfer transfers amount of tokens from the faucet account to toAccountAddress.
 func (f *Faucet) Transfer(ctx context.Context, toAccountAddress string, coins sdk.Coins) error {
 	transferMutex.Lock()
@@ -74,7 +97,7 @@ func (f *Faucet) Transfer(ctx context.Context, toAccountAddress string, coins sd
 
 	// check for each coin, the max transferred amount hasn't been reached
 	for _, c := range coins {
-		totalSent, err := f.TotalTransferredAmount(ctx, toAccountAddress, c.Denom)
+		totalSent, err := f.TotalTransferredAmountLocalDB(ctx, toAccountAddress, c.Denom)
 		if err != nil {
 			return err
 		}
@@ -83,7 +106,7 @@ func (f *Faucet) Transfer(ctx context.Context, toAccountAddress string, coins sd
 			if totalSent.GTE(coinMax) {
 				return errors.Errorf(
 					"account has reached to the max. allowed amount (%d) for %q denom",
-					coinMax,
+					coinMax.Uint64(),
 					c.Denom,
 				)
 			}
@@ -108,6 +131,10 @@ func (f *Faucet) Transfer(ctx context.Context, toAccountAddress string, coins sd
 	txHash, err := f.runner.BankSend(ctx, fromAccount.Address, toAccountAddress, strings.Join(coinsStr, ","), chaincmd.BankSendWithFees(f.feeAmount))
 	if err != nil {
 		return err
+	}
+
+	for _, c := range coins {
+		f.AddAmountToLocalDB(ctx, toAccountAddress, c.Denom, c.Amount)
 	}
 
 	// wait for send tx to be confirmed
